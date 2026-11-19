@@ -86,7 +86,15 @@ class SchemaValidator:
     def _check_type(self, col, name, expected, result):
         type_map = {"int": "int64", "float": "float64", "str": "object", "bool": "bool"}
         expected_dtype = type_map.get(expected)
-        if expected_dtype and str(col.dtype) != expected_dtype:
+        if not expected_dtype:
+            return
+        if expected == "str":
+            # pandas >= 3 uses the "str" dtype for text columns; older
+            # versions used "object". Both represent valid string data.
+            valid = str(col.dtype) in ("object", "str") or pd.api.types.is_string_dtype(col)
+        else:
+            valid = str(col.dtype) == expected_dtype
+        if not valid:
             result.add_error(name, f"Expected type {expected}, got {col.dtype}")
 
     def _check_nullable(self, col, name, result):
